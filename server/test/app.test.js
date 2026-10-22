@@ -87,6 +87,22 @@ test('CSV export neutralizes spreadsheet formulas in user-controlled text', () =
   assert.deepEqual(parseCsv('\uFEFFName,Phone\nAlya,08123').headers, ['Name', 'Phone']);
 });
 
+test('organization settings accept real timezones and uploaded logo data', async () => {
+  const response = await agent.patch('/api/settings').send({
+    name: 'Updated Clinic',
+    timezone: 'America/New_York',
+    logoDataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAF' 
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.organization.name, 'Updated Clinic');
+  assert.equal(response.body.organization.timezone, 'America/New_York');
+  assert.equal(response.body.organization.logo_url, 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAF');
+
+  const settings = await agent.get('/api/settings');
+  assert.equal(settings.body.organization.timezone, 'America/New_York');
+  assert.equal(settings.body.organization.logo_url, 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAF');
+});
+
 test('lead status updates create activity and tenant data stays private', async () => {
   const update = await agent.patch(`/api/leads/${leadId}`).send({
     displayName: 'Test Lead', phone: '08123456789', source: 'Instagram', campaignId, branchId,

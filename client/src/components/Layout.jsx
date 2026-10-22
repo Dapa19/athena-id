@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Activity, Building2, CalendarClock, ChevronDown, CircleDollarSign, ContactRound, LayoutDashboard, LogOut, Megaphone, Sparkles, Users } from 'lucide-react';
+import { Activity, Building2, CalendarClock, ChevronDown, CircleDollarSign, ContactRound, LayoutDashboard, LogOut, Megaphone, Users } from 'lucide-react';
+import athenaLogo from '../assets/athena-logo/Athena Logo.png';
 
 const items = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -25,9 +26,12 @@ export function Layout({ user, route, navigate, onLogout, children }) {
     <div className="app-shell">
       <aside className="sidebar">
         <a className="brand-lockup" href="#overview" onClick={(event) => { event.preventDefault(); navigate('overview'); }}>
-          <span className="brand-mark"><Sparkles size={18} /></span><span>Athena<span className="brand-dot">.</span>id</span>
+          <img className="brand-mark brand-mark-image" src={athenaLogo} alt="Athena logo" /><span>Athena<span className="brand-dot">.</span>id</span>
         </a>
-        <div className="workspace-label"><span className="workspace-symbol">{user.organizationName?.slice(0, 1) || 'A'}</span><span><strong>{user.organizationName}</strong><small>{user.demoMode ? 'Demo workspace' : 'Clinic workspace'}</small></span></div>
+        <div className="workspace-label">
+          {user.organizationLogo ? <img className="workspace-logo" src={user.organizationLogo} alt={user.organizationName ? `${user.organizationName} logo` : 'Organization logo'} /> : <span className="workspace-symbol">{user.organizationName?.slice(0, 1) || 'A'}</span>}
+          <span><strong>{user.organizationName}</strong><small>{user.demoMode ? 'Demo workspace' : 'Clinic workspace'}</small></span>
+        </div>
         <div className="nav-label">Workspace</div>
         <nav className="primary-nav" aria-label="Primary navigation">{items.map(navItem)}</nav>
         <div className="nav-label nav-label-management">Manage</div>
@@ -46,7 +50,7 @@ export function Layout({ user, route, navigate, onLogout, children }) {
       </aside>
       <div className="mobile-nav">
         <a className="brand-lockup" href="#overview" onClick={(event) => { event.preventDefault(); navigate('overview'); }}>
-          <span className="brand-mark"><Sparkles size={18} /></span><span>Athena<span className="brand-dot">.</span>id</span>
+          <img className="brand-mark brand-mark-image" src={athenaLogo} alt="Athena logo" /><span>Athena<span className="brand-dot">.</span>id</span>
         </a>
         <label className="mobile-select-label"><span className="sr-only">Navigate workspace</span>
           <select value={current} onChange={(event) => navigate(event.target.value)}>

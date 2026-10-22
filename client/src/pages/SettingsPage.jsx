@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Building2, KeyRound, Plus, ShieldCheck, UserCog, Users } from 'lucide-react';
+import { Building2, ImagePlus, KeyRound, Plus, ShieldCheck, UserCog, Users } from 'lucide-react';
 import { api, formatDate } from '../lib/api.js';
 import { Badge, Button, EmptyState, ErrorState, Field, LoadingState, PageTitle, Select, TableWrap } from '../components/UI.jsx';
 import { Modal } from '../components/Modal.jsx';
+
+const TIMEZONE_OPTIONS = [
+  'Africa/Johannesburg', 'America/Los_Angeles', 'America/New_York', 'Asia/Jakarta', 'Asia/Kuala_Lumpur', 'Asia/Singapore', 'Asia/Tokyo',
+  'Australia/Sydney', 'Europe/Berlin', 'Europe/London', 'Pacific/Auckland'
+];
 
 function MemberForm({ onClose, onSaved, notify }) {
   const [form, setForm] = useState({ displayName: '', email: '', password: '', role: 'staff' });
@@ -31,6 +36,9 @@ export function SettingsPage({ user, onUserUpdate, notify }) {
   const [organization, setOrganization] = useState(null);
   const [members, setMembers] = useState([]);
   const [name, setName] = useState('');
+  const [timezone, setTimezone] = useState('Asia/Jakarta');
+  const [logoDataUrl, setLogoDataUrl] = useState('');
+  const [logoError, setLogoError] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [savingOrg, setSavingOrg] = useState(false);
@@ -39,14 +47,55 @@ export function SettingsPage({ user, onUserUpdate, notify }) {
   const load = useCallback(() => {
     setLoading(true); setError('');
     Promise.all([api('/api/settings'), api('/api/team')]).then(([settings, team]) => {
-      setOrganization(settings.organization); setName(settings.organization.name); setMembers(team.members);
+      const org = settings.organization || {};
+      setOrganization(org); setName(org.name || ''); setTimezone(org.timezone || 'Asia/Jakarta'); setLogoDataUrl(org.logo_url || ''); setMembers(team.members);
     }).catch((requestError) => setError(requestError.message)).finally(() => setLoading(false));
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  function handleLogoSelect(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      setLogoError('Only PNG, JPG, GIF, or WEBP images are supported.');
+      event.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      const isSquare = file.type !== 'image/svg+xml';
+      if (isSquare && result.length > 0) {
+        const image = new Image();
+        image.onload = () => {
+          if (image.width !== image.height) {
+            setLogoError('Upload a square logo with a 1:1 ratio.');
+            return;
+          }
+          setLogoError('');
+          setLogoDataUrl(result);
+        };
+        image.onerror = () => setLogoError('Could not read the selected image.');
+        image.src = result;
+      } else {
+        setLogoError('');
+        setLogoDataUrl(result);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
   async function saveOrganization(event) {
-    event.preventDefault(); setSavingOrg(true);
-    try { const result = await api('/api/settings', { method: 'PATCH', json: { name } }); setOrganization(result.organization); onUserUpdate?.({ organizationName: result.organization.name }); notify('Organization settings saved'); }
+    event.preventDefault(); setSavingOrg(true); setLogoError('');
+    try {
+      const result = await api('/api/settings', { method: 'PATCH', json: { name, timezone, logoDataUrl: logoDataUrl || undefined } });
+      setOrganization(result.organization);
+      setTimezone(result.organization.timezone || 'Asia/Jakarta');
+      setLogoDataUrl(result.organization.logo_url || '');
+      onUserUpdate?.({ organizationName: result.organization.name, organizationLogo: result.organization.logo_url || null });
+      notify('Organization settings saved');
+    }
     catch (requestError) { notify(requestError.message, 'error'); }
     finally { setSavingOrg(false); }
   }
@@ -63,10 +112,27 @@ export function SettingsPage({ user, onUserUpdate, notify }) {
   return <div className="page-content">
     <PageTitle eyebrow="Workspace" title="Team & settings" description="Manage organization details and team access." />
     <section className="settings-section panel">
-      <div className="settings-section-heading"><span className="settings-icon"><Building2 size={19} /></span><div><h2>Organization</h2><p>Workspace identity and date display preference.</p></div></div>
-      <form className="organization-form" onSubmit={saveOrganization}>
+      <div className="settings-section-heading"><span className="settings-icon"><Building2 size={19} /></span><div><h2>Organization</h2><p>Workspace identity, branding, and timezone preference.</p></div></div>
+      <form className="organization-form organization-form-stack" onSubmit={saveOrganization}>
         <Field label="Organization name"><input value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required /></Field>
-        <Field label="Default timezone"><input value="Asia/Jakarta" readOnly aria-readonly="true" /></Field>
+        <Field label="Default timezone"><Select value={timezone} onChange={(event) => setTimezone(event.target.value)}>{TIMEZONE_OPTIONS.map((tz) => <option key={tz} value={tz}>{tz}</option>)}</Select></Field>
+        <div className="organization-logo-field">
+          <span className="field-label">Organization logo</span>
+          <div className="organization-logo-card">
+            <div className="organization-logo-preview-shell">
+              {logoDataUrl ? <img src={logoDataUrl} alt="Organization logo preview" className="organization-logo-preview" /> : <div className="organization-logo-empty"><ImagePlus size={18} /><span>Upload logo</span></div>}
+            </div>
+            <div className="organization-logo-actions">
+              <label className="upload-button button button-secondary button-small" htmlFor="org-logo-upload">
+                <input id="org-logo-upload" type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={handleLogoSelect} />
+                {logoDataUrl ? 'Change file' : 'Choose file'}
+              </label>
+              {logoDataUrl && <button type="button" className="text-button danger-text" onClick={() => { setLogoDataUrl(''); setLogoError(''); const input = document.getElementById('org-logo-upload'); if (input) input.value = ''; }}>Remove image</button>}
+            </div>
+          </div>
+          {logoError && <span className="inline-error inline-error-small">{logoError}</span>}
+          <span className="field-hint">Use a 1:1 image. PNG, JPG, GIF, and WEBP are supported.</span>
+        </div>
         <div className="organization-save"><Button type="submit" loading={savingOrg}>Save settings</Button></div>
       </form>
       <div className="settings-created">Workspace created {formatDate(organization?.created_at)} · ID {organization?.id}</div>

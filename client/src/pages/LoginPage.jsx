@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { api } from '../lib/api.js';
+import athenaLogo from '../assets/athena-logo/Athena Logo.png';
 import { Alert, Button, Field } from '../components/UI.jsx';
 
 export function LoginPage({ onLogin }) {
@@ -36,7 +37,7 @@ export function LoginPage({ onLogin }) {
   return (
     <main className="login-screen">
       <section className="login-card">
-        <div className="brand-lockup brand-login"><span className="brand-mark"><Sparkles size={20} /></span><span>Athena<span className="brand-dot">.</span>id</span></div>
+        <div className="brand-lockup brand-login"><img className="brand-mark brand-mark-image" src={athenaLogo} alt="Athena logo" /><span>Athena<span className="brand-dot">.</span>id</span></div>
         <p className="eyebrow">Growth workspace</p>
         <h1>Welcome back</h1>
         <p className="login-intro">Sign in to review campaigns, leads, and branch performance.</p>

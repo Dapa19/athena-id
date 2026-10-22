@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS organizations (
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
   timezone TEXT NOT NULL DEFAULT 'Asia/Jakarta',
+  logo_url TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE TABLE IF NOT EXISTS users (
@@ -171,6 +172,10 @@ export function openDatabase(filePath = databasePath()) {
       const leadColumns = await all('PRAGMA table_info(leads)');
       if (!leadColumns.some((column) => column.name === 'whatsapp_authorized')) {
         await exec('ALTER TABLE leads ADD COLUMN whatsapp_authorized INTEGER NOT NULL DEFAULT 0 CHECK(whatsapp_authorized IN (0, 1));');
+      }
+      const orgColumns = await all('PRAGMA table_info(organizations)');
+      if (!orgColumns.some((column) => column.name === 'logo_url')) {
+        await exec('ALTER TABLE organizations ADD COLUMN logo_url TEXT;');
       }
       await exec('PRAGMA user_version = 1;');
     },

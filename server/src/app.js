@@ -29,6 +29,22 @@ function optionalText(value, label, max = 500) {
   return text;
 }
 
+function validTimezone(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const tz = value.trim();
+  if (!Intl.supportedValuesOf) return tz;
+  return Intl.supportedValuesOf('timeZone').includes(tz) ? tz : null;
+}
+
+function validateImageDataUrl(value) {
+  if (typeof value !== 'string' || !value.startsWith('data:image/')) return null;
+  const match = value.match(/^data:(image\/(png|jpeg|jpg|gif|webp));base64,/i);
+  if (!match) return null;
+  const data = value.slice(match[0].length);
+  if (!data || data.length === 0 || data.length > 2_000_000) return null;
+  return value;
+}
+
 function dateOnly(value, label, allowEmpty = false) {
   if (allowEmpty && (value == null || value === '')) return null;
   if (typeof value !== 'string' || !datePattern.test(value) || Number.isNaN(new Date(`${value}T00:00:00Z`).getTime()) || new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) !== value) {
@@ -659,7 +675,7 @@ export function createApp({ database } = {}) {
 
   app.get('/api/settings', requireRole(...ROLE_ADMIN), async (req, res, next) => {
     try {
-      const organization = await database.get('SELECT id, name, timezone, created_at FROM organizations WHERE id = ?', [req.user.organizationId]);
+      const organization = await database.get('SELECT id, name, timezone, logo_url, created_at FROM organizations WHERE id = ?', [req.user.organizationId]);
       return res.json({ organization });
     } catch (error) { return next(error); }
   });
@@ -667,10 +683,12 @@ export function createApp({ database } = {}) {
   app.patch('/api/settings', requireRole(...ROLE_ADMIN), async (req, res, next) => {
     try {
       const name = requiredText(req.body?.name, 'Organization name', 120);
-      const timezone = req.body?.timezone || 'Asia/Jakarta';
-      if (timezone !== 'Asia/Jakarta') throw httpError(400, 'VALIDATION_ERROR', 'Asia/Jakarta is the only timezone available in this MVP.');
-      await database.run('UPDATE organizations SET name = ?, timezone = ? WHERE id = ?', [name, timezone, req.user.organizationId]);
-      return res.json({ organization: await database.get('SELECT id, name, timezone, created_at FROM organizations WHERE id = ?', [req.user.organizationId]) });
+      const timezoneValue = validTimezone(req.body?.timezone || 'Asia/Jakarta');
+      if (!timezoneValue) throw httpError(400, 'VALIDATION_ERROR', 'Choose a valid timezone from the list.');
+      const logoUrl = validateImageDataUrl(req.body?.logoDataUrl ?? null);
+      if (req.body?.logoDataUrl != null && !logoUrl) throw httpError(400, 'VALIDATION_ERROR', 'Upload a valid image file in PNG, JPG, GIF, or WEBP format.');
+      await database.run('UPDATE organizations SET name = ?, timezone = ?, logo_url = ? WHERE id = ?', [name, timezoneValue, logoUrl ?? null, req.user.organizationId]);
+      return res.json({ organization: await database.get('SELECT id, name, timezone, logo_url, created_at FROM organizations WHERE id = ?', [req.user.organizationId]) });
     } catch (error) { return next(error); }
   });
 

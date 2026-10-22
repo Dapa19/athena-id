@@ -45,7 +45,7 @@ export function loginRoutes(app, database) {
       }
 
       const user = await database.get(
-        `SELECT u.id, u.email, u.display_name, u.password_hash, m.organization_id, m.role, o.name AS organization_name
+        `SELECT u.id, u.email, u.display_name, u.password_hash, m.organization_id, m.role, o.name AS organization_name, o.logo_url AS organization_logo
          FROM users u
          JOIN organization_memberships m ON m.user_id = u.id
          JOIN organizations o ON o.id = m.organization_id
@@ -80,6 +80,7 @@ function publicUser(user) {
     role: user.role,
     organizationId: user.organization_id,
     organizationName: user.organization_name,
+    organizationLogo: user.organization_logo,
     demoMode: !isProduction && process.env.SEED_DEMO_DATA !== 'false'
   };
 }
@@ -93,7 +94,7 @@ export function requireAuth(database) {
       }
       const row = await database.get(
         `SELECT s.token_hash, s.expires_at, u.id AS user_id, u.email, u.display_name, u.is_active,
-                m.organization_id, m.role, o.name AS organization_name
+                m.organization_id, m.role, o.name AS organization_name, o.logo_url AS organization_logo
          FROM sessions s
          JOIN users u ON u.id = s.user_id
          JOIN organization_memberships m ON m.user_id = u.id AND m.organization_id = s.organization_id
@@ -113,6 +114,7 @@ export function requireAuth(database) {
         displayName: row.display_name,
         organizationId: row.organization_id,
         organizationName: row.organization_name,
+        organizationLogo: row.organization_logo,
         role: row.role,
         demoMode: !isProduction && process.env.SEED_DEMO_DATA !== 'false'
       };
