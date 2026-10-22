@@ -439,6 +439,8 @@ h3 { margin: 0; font-size: 16px; font-weight: 600; }
 .toast > span { flex: 1; }
 .toast-close { width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 6px; color: inherit; background: transparent; }
 .toast-close:hover { background: rgba(15, 23, 42, .06); }
+.export-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); gap: 12px; min-width: min(440px, 70vw); }
+.export-choice-grid .button { width: 100%; }
 
 @media (max-width: 1250px) {
   .sidebar { width: 225px; }

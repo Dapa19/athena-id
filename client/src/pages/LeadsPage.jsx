@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, CalendarClock, Download, Filter, MessageCircle, Plus, Search, UserRound, Users } from 'lucide-react';
-import { api, downloadCsv, formatDate, formatIDR, todayString, withQuery } from '../lib/api.js';
+import { api, downloadCsv, downloadExcel, formatDate, formatIDR, todayString, withQuery } from '../lib/api.js';
 import { Alert, Badge, Button, EmptyState, ErrorState, Field, LoadingState, PageTitle, Select, StatusBadge, TableWrap } from '../components/UI.jsx';
 import { Modal } from '../components/Modal.jsx';
 
@@ -129,6 +129,7 @@ export function LeadsPage({ user, navigate, notify, selectedId }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
   const [detailId, setDetailId] = useState(selectedId ? Number(selectedId) : null);
+  const [exportModal, setExportModal] = useState(null);
   const canArchive = ['owner_admin', 'manager'].includes(user.role);
 
   const load = useCallback(() => {
@@ -161,7 +162,7 @@ export function LeadsPage({ user, navigate, notify, selectedId }) {
   return (
     <div className="page-content">
       <PageTitle eyebrow="Pipeline" title="Leads" description="Track source, status, ownership, and follow-up." actions={<>
-        <Button variant="secondary" icon={Download} onClick={() => downloadCsv(exportUrl())}>Export CSV</Button>
+        <Button variant="secondary" icon={Download} onClick={() => setExportModal({ title: 'Export Leads', url: exportUrl(), filename: 'leads' })}>Export Leads</Button>
         {canArchive && <Button variant="secondary" onClick={() => navigate('import/leads')}>Import CSV</Button>}
         <Button icon={Plus} onClick={() => { setEditingLead(null); setFormOpen(true); }}>Add lead</Button>
       </>} />
@@ -190,6 +191,12 @@ export function LeadsPage({ user, navigate, notify, selectedId }) {
       </section> : <section className="panel"><EmptyState icon={UserRound} title={search || status || branchId || campaignId || source || assigneeId || from || to ? 'No leads match these filters' : 'Add your first lead'} description={search || status || branchId || campaignId || source || assigneeId || from || to ? 'Try changing a filter or search term.' : 'Link leads to campaigns and branches to understand where interest comes from.'} action={!search && !status && !branchId && !campaignId && !source && !assigneeId && !from && !to && <Button icon={Plus} onClick={() => setFormOpen(true)}>Add lead</Button>} /></section>}
       {formOpen && <LeadForm lead={editingLead} branches={branches} campaigns={campaigns} members={members} onClose={() => setFormOpen(false)} onSaved={() => { setFormOpen(false); load(); }} notify={notify} />}
       {detailId && <LeadDetail leadId={detailId} onClose={() => { setDetailId(null); navigate('leads'); }} onEdit={(lead) => { setDetailId(null); navigate('leads'); setEditingLead(lead); setFormOpen(true); }} onArchived={() => { setDetailId(null); navigate('leads'); load(); }} canArchive={canArchive} organizationName={user.organizationName} notify={notify} />}
+      {exportModal && <Modal title={exportModal.title} description="Choose the file format for this export." onClose={() => setExportModal(null)}>
+        <div className="export-choice-grid">
+          <Button variant="secondary" onClick={() => { downloadCsv(exportModal.url, `${exportModal.filename}.csv`); setExportModal(null); }}>Download CSV</Button>
+          <Button onClick={() => { downloadExcel(exportModal.url, `${exportModal.filename}.xlsx`); setExportModal(null); }}>Download Excel</Button>
+        </div>
+      </Modal>}
     </div>
   );
 }

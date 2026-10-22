@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Download, Megaphone, Plus, Search } from 'lucide-react';
-import { api, downloadCsv, formatDate, formatIDR, todayString, withQuery } from '../lib/api.js';
+import { api, downloadCsv, downloadExcel, formatDate, formatIDR, todayString, withQuery } from '../lib/api.js';
 import { Badge, Button, EmptyState, ErrorState, Field, LoadingState, PageTitle, Select, StatusBadge, TableWrap } from '../components/UI.jsx';
 import { Modal } from '../components/Modal.jsx';
 
@@ -129,6 +129,7 @@ export function CampaignsPage({ user, navigate, selectedId, notify }) {
   const [branchId, setBranchId] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState(null);
+  const [exportModal, setExportModal] = useState(null);
   const canManage = ['owner_admin', 'manager'].includes(user.role);
   const load = useCallback(() => {
     setLoading(true); setError('');
@@ -149,7 +150,7 @@ export function CampaignsPage({ user, navigate, selectedId, notify }) {
   return (
     <div className="page-content">
       <PageTitle eyebrow="Acquisition" title="Campaigns" description="Plan campaigns and compare their recorded outcomes." actions={<>
-        {canManage && <Button variant="secondary" icon={Download} onClick={() => downloadCsv(withQuery('/api/export/campaign-performance.csv', { q: search, status, branchId }))}>Export performance</Button>}
+        {canManage && <Button variant="secondary" icon={Download} onClick={() => setExportModal({ title: 'Export Campaign Performance', url: withQuery('/api/export/campaign-performance.csv', { q: search, status, branchId }), filename: 'campaign-performance' })}>Export Campaign Performance</Button>}
         {canManage && <Button icon={Plus} onClick={() => { setEditingCampaign(null); setFormOpen(true); }}>New campaign</Button>}
       </>} />
       <section className="filter-toolbar">
@@ -170,6 +171,12 @@ export function CampaignsPage({ user, navigate, selectedId, notify }) {
         </section>
       ) : <section className="panel"><EmptyState icon={Megaphone} title={search || status || branchId ? 'No matching campaigns' : 'Start with a campaign'} description={search || status || branchId ? 'Try changing your search or filters.' : 'Record campaign dates, budget, spend, and branches to track real outcomes.'} action={canManage && !search && !status && !branchId ? <Button icon={Plus} onClick={() => setFormOpen(true)}>Create campaign</Button> : null} /></section>}
       {formOpen && <CampaignForm campaign={editingCampaign} branches={branches} onClose={() => setFormOpen(false)} onSaved={() => { setFormOpen(false); load(); }} notify={notify} />}
+      {exportModal && <Modal title={exportModal.title} description="Choose the file format for this export." onClose={() => setExportModal(null)}>
+        <div className="export-choice-grid">
+          <Button variant="secondary" onClick={() => { downloadCsv(exportModal.url, `${exportModal.filename}.csv`); setExportModal(null); }}>Download CSV</Button>
+          <Button onClick={() => { downloadExcel(exportModal.url, `${exportModal.filename}.xlsx`); setExportModal(null); }}>Download Excel</Button>
+        </div>
+      </Modal>}
     </div>
   );
 }

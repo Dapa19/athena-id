@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, CircleDollarSign, Download, Plus, Search } from 'lucide-react';
-import { api, downloadCsv, formatDate, formatIDR, todayString, withQuery } from '../lib/api.js';
+import { api, downloadCsv, downloadExcel, formatDate, formatIDR, todayString, withQuery } from '../lib/api.js';
 import { Button, EmptyState, ErrorState, Field, LoadingState, PageTitle, Select, StatusBadge, TableWrap } from '../components/UI.jsx';
 import { Modal } from '../components/Modal.jsx';
 
@@ -75,6 +75,7 @@ export function TransactionsPage({ user, navigate, notify }) {
   const [to, setTo] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [exportModal, setExportModal] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true); setError('');
@@ -93,7 +94,7 @@ export function TransactionsPage({ user, navigate, notify }) {
   return (
     <div className="page-content">
       <PageTitle eyebrow="Revenue records" title="Transactions" description="Record payment outcomes linked to leads, campaigns, and branches." actions={<>
-        <Button variant="secondary" icon={Download} onClick={() => downloadCsv(withQuery('/api/export/transactions.csv', { q: search, status, branchId, campaignId, from, to }))}>Export CSV</Button>
+        <Button variant="secondary" icon={Download} onClick={() => setExportModal({ title: 'Export Transactions', url: withQuery('/api/export/transactions.csv', { q: search, status, branchId, campaignId, from, to }), filename: 'transactions' })}>Export Transactions</Button>
         {['owner_admin', 'manager'].includes(user.role) && <Button variant="secondary" onClick={() => navigate('import/transactions')}>Import CSV</Button>}
         <Button icon={Plus} onClick={() => { setEditing(null); setFormOpen(true); }}>Record transaction</Button>
       </>} />
@@ -116,6 +117,12 @@ export function TransactionsPage({ user, navigate, notify }) {
         </tbody></TableWrap>
       </section> : <section className="panel"><EmptyState icon={CircleDollarSign} title="No transactions found" description="Record paid, refunded, or cancelled transactions without storing payment credentials." action={<Button icon={Plus} onClick={() => setFormOpen(true)}>Record transaction</Button>} /></section>}
       {formOpen && <TransactionForm transaction={editing} leads={leads} branches={branches} campaigns={campaigns} onClose={() => setFormOpen(false)} onSaved={() => { setFormOpen(false); load(); }} notify={notify} />}
+      {exportModal && <Modal title={exportModal.title} description="Choose the file format for this export." onClose={() => setExportModal(null)}>
+        <div className="export-choice-grid">
+          <Button variant="secondary" onClick={() => { downloadCsv(exportModal.url, `${exportModal.filename}.csv`); setExportModal(null); }}>Download CSV</Button>
+          <Button onClick={() => { downloadExcel(exportModal.url, `${exportModal.filename}.xlsx`); setExportModal(null); }}>Download Excel</Button>
+        </div>
+      </Modal>}
     </div>
   );
 }
