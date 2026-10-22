@@ -692,7 +692,7 @@ export function createApp({ database } = {}) {
     } catch (error) { return next(error); }
   });
 
-  app.get('/api/team', requireRole(...ROLE_ADMIN), async (req, res, next) => {
+  app.get('/api/team', requireRole(...ROLE_MANAGERS), async (req, res, next) => {
     try {
       const members = await database.all(
         `SELECT u.id, u.email, u.display_name, u.is_active, m.role, u.created_at

@@ -127,6 +127,28 @@ test('lead status updates create activity and tenant data stays private', async 
   assert.equal(privateLead.status, 404);
 });
 
+test('managers can view team members and assign leads to staff', async () => {
+  const staff = await database.run('INSERT INTO users (email, display_name, password_hash) VALUES (?, ?, ?)', ['staff@test.invalid', 'Staff User', await bcrypt.hash('strong-demo-password', 4)]);
+  await database.run('INSERT INTO organization_memberships (user_id, organization_id, role) VALUES (?, ?, ?)', [staff.lastID, organizationId, 'staff']);
+  const manager = await database.run('INSERT INTO users (email, display_name, password_hash) VALUES (?, ?, ?)', ['manager@test.invalid', 'Manager User', await bcrypt.hash('strong-demo-password', 4)]);
+  await database.run('INSERT INTO organization_memberships (user_id, organization_id, role) VALUES (?, ?, ?)', [manager.lastID, organizationId, 'manager']);
+
+  const managerAgent = request.agent(app);
+  const login = await managerAgent.post('/api/auth/login').send({ email: 'manager@test.invalid', password: 'strong-demo-password' });
+  assert.equal(login.status, 200);
+
+  const team = await managerAgent.get('/api/team');
+  assert.equal(team.status, 200);
+  assert.ok(team.body.members.some((member) => member.id === staff.lastID && member.role === 'staff'));
+
+  const response = await managerAgent.post('/api/leads').send({
+    displayName: 'Manager assigned lead', phone: '08123456790', source: 'Walk-in', campaignId, branchId,
+    assigneeUserId: staff.lastID, status: 'New', createdDate: '2026-10-15', nextFollowUpDate: '2026-10-18', notes: 'Assigned by manager'
+  });
+  assert.equal(response.status, 201);
+  assert.equal(response.body.lead.assignee_user_id, staff.lastID);
+});
+
 test('campaigns can only be attributed to their selected branches', async () => {
   const otherBranch = await database.run('INSERT INTO branches (organization_id, name, city) VALUES (?, ?, ?)', [organizationId, 'North', 'Jakarta']);
   const response = await agent.post('/api/leads').send({
